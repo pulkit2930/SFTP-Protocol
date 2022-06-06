@@ -2,6 +2,8 @@ package com.onedirect.sftpshopperstop.service;
 
 import com.onedirect.sftpshopperstop.DTO.ThirdPartyTicketInputDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 
@@ -9,10 +11,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.*;
 
 import org.apache.poi.xssf.usermodel.*;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -56,42 +58,96 @@ public class ReadingFile {
                 for (int cell = 0; cell < cells; cell++) {
                     XSSFCell xssfCell = (XSSFCell) xssfRow.getCell(cell);
                     String cellColumn = columnNames.get(cell);
+                    System.out.println("cell type " + xssfCell.getCellType());
 
-//                    switch (xssfCell.getCellType()) {
-//                        case STRING:
-//                            try {
-//
-//                                thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
-//                                        xssfCell.getStringCellValue());
-//                            } catch (NoSuchFieldException e) {
-//                                throw new RuntimeException(e);
-//                            } catch (IllegalAccessException e) {
-//                                throw new RuntimeException(e);
-//                            }
-//
-//                            break;
-//
-//                        case NUMERIC:
+//                    try {
+//                        thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
+//                                xssfCell.getRawValue());
+//                    } catch (NoSuchFieldException e) {
+//                        throw new RuntimeException(e);
+//                    } catch (IllegalAccessException e) {
+//                        throw new RuntimeException(e);
+//                    }
+                    switch (xssfCell.getCellType()) {
+
+                        case STRING:
                             try {
-
                                 thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
-                                        xssfCell.getRawValue());
+                                        xssfCell.getStringCellValue());
                             } catch (NoSuchFieldException e) {
                                 throw new RuntimeException(e);
                             } catch (IllegalAccessException e) {
                                 throw new RuntimeException(e);
                             }
-                           // break;
 
-                    //}
+                            break;
+
+                        case NUMERIC:
+                            try {
+                                if(DateUtil.isCellDateFormatted(xssfCell))
+                                {
+                                    Date date = xssfCell.getDateCellValue();
+                                    long yourmilliseconds = date.getTime();
+                                    LocalDateTime localDateTime = Instant.ofEpochMilli(yourmilliseconds).atZone(ZoneId.systemDefault()).toLocalDateTime();
+                                    String dateTime = localDateTime.toString();
+                                    dateTime = dateTime.replace('T',' ');
+                                    thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
+                                            dateTime);
+                                }
+                                else {
+                                    DataFormatter formatter = new DataFormatter();
+                                    thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
+                                            String.valueOf(formatter.formatCellValue(xssfCell)));
+                                }
+                            } catch (NoSuchFieldException e) {
+                                throw new RuntimeException(e);
+                            } catch (IllegalAccessException e) {
+                                throw new RuntimeException(e);
+                            }
+                            break;
+
+                        case FORMULA:
+                            try {
+                                thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
+                                        xssfCell.getRawValue() + "");
+                            } catch (NoSuchFieldException e) {
+                                throw new RuntimeException(e);
+                            } catch (IllegalAccessException e) {
+                                throw new RuntimeException(e);
+                            }
+                            break;
+                    }
+
+//                        case BOOLEAN:
+//                            try {
+//                                thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
+//                                        xssfCell.getBooleanCellValue() + "");
+//                            } catch (NoSuchFieldException e) {
+//                                throw new RuntimeException(e);
+//                            } catch (IllegalAccessException e) {
+//                                throw new RuntimeException(e);
+//                            }
+//                            break;
+
+//                        default:
+//                            try {
+//                                thirdPartyTicketInputDTO.getClass().getDeclaredField(cellColumn).set(thirdPartyTicketInputDTO,
+//                                        xssfCell.getLocalDateTimeCellValue() + "");
+//                            } catch (NoSuchFieldException e) {
+//                                throw new RuntimeException(e);
+//                            } catch (IllegalAccessException e) {
+//                                throw new RuntimeException(e);
+//                            }
+//                            break;
+//                    }
+
+
+
                 }
                 log.info("TicketInput DTO :: {}", thirdPartyTicketInputDTO.toString());
                 thirdPartyTicketInputDTOS.add(thirdPartyTicketInputDTO);
 
-
             }
-
-
         } catch (RuntimeException e) {
             throw new RuntimeException(e);
         }
